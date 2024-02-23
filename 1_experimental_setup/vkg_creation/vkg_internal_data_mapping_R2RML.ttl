@@ -1,0 +1,335 @@
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix sto: <http://test.org/products_and_sales_ontology/> .
+
+<#ProductOntologyTableView> rr:sqlQuery """
+select
+store_id,
+barcode,
+type_product_predicted_1,
+type_product_predicted_2 
+from summary.product_ontology_mapping pom
+""". 
+
+<#ProductType>
+  a rr:TriplesMap ;
+
+  rr:logicalTable <#ProductOntologyTableView> ;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/producttype/{store_id}/{barcode}" ;
+    rr:class sto:ProductType ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate rdfs:label;
+    rr:objectMap [ rr:column "type_product_predicted_1" ] ;
+  ] ;
+
+  rr:predicateObjectMap  [
+    rr:predicate sto:level_1;
+    rr:objectMap [ rr:column "type_product_predicted_1" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:level_2;
+    rr:objectMap [ rr:column "type_product_predicted_2" ] ;
+  ] ;
+  .
+
+<#ProductTableView> rr:sqlQuery """
+select ps.store_id,
+ps.barcode,
+ps.libelle
+from productids_summaries ps 
+""". 
+
+<#Product>
+  a rr:TriplesMap ;
+
+  rr:logicalTable <#ProductTableView>;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/product/{store_id}/{barcode}" ;
+    rr:class sto:Product ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_type_of;
+    rr:objectMap [ 
+        rr:parentTriplesMap <#ProductType>;
+        rr:joinCondition [ rr:child "store_id"; rr:parent "store_id"];
+        rr:joinCondition [ rr:child "barcode"; rr:parent "barcode"];
+    ]
+  ];
+  
+  rr:predicateObjectMap [
+    rr:predicate rdfs:label;
+    rr:objectMap [ rr:column "libelle" ] ;
+  ] ;
+.
+
+<#ProductSalesTableView> rr:sqlQuery """
+select
+ps.store_id,
+ps.barcode ,
+ps.sum_quantity_product,
+ps.date ,
+to_char(ps.date ,'yyymmdd')
+from products_summaries ps 
+""". 
+
+<#ProductSell>
+  a rr:TriplesMap ;
+
+  rr:logicalTable <#ProductSalesTableView>;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/sale/{store_id}/{barcode}/{date}" ;
+    rr:class sto:ProductSell ;
+  ] ;
+  
+  rr:predicateObjectMap [
+    rr:predicate rdfs:label;
+    rr:objectMap [ rr:column "barcode" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_product;
+    rr:objectMap [ 
+        rr:parentTriplesMap <#Product>;
+        rr:joinCondition [ rr:child "store_id"; rr:parent "store_id"];
+        rr:joinCondition [ rr:child "barcode"; rr:parent "barcode"];
+    ]
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_sold_by;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/store/{store_id}" ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicate sto:quantity_sold;
+    rr:objectMap [ rr:column "sum_quantity_product"; rr:datatype xsd:decimal ] ;
+  ] ;
+
+    rr:predicateObjectMap [
+    rr:predicate sto:date_sold;
+    rr:objectMap [ rr:column "date"; rr:datatype xsd:date ] ;
+  ] ;
+.
+
+<#StoreTableView> rr:sqlQuery """
+SELECT DISTINCT si.store_id,
+si.cust_id,
+si.marche,
+si.sous_marche,
+si.nom,
+si.store_id_prec,
+si.enseigne,
+si.siret,
+addr.iris,
+addr.insee_code,
+addr.zip_code
+FROM summary.store_ids si 
+left join summary.address addr on addr.store_id = si.store_id 
+""". 
+
+<#Store>
+  a rr:TriplesMap ;
+
+  rr:logicalTable <#StoreTableView>;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/store/{store_id}" ;
+    rr:class sto:Store ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate rdfs:label;
+    rr:objectMap [ rr:column "enseigne" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:enseigne;
+    rr:objectMap [ rr:column "enseigne" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:store_id;
+    rr:objectMap [ rr:column "store_id" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:siret;
+    rr:objectMap [ rr:column "siret" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_in_insee_zone;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/InseeZone/{insee_code}" ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_in_iris_zone;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/IrisZone/{iris}" ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_in_zip_zone;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/ZipZone/{zip_code}" ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_in_town;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/Town/{insee_code}" ];
+  ];
+.
+
+<#TobaccoStoreTableView> rr:sqlQuery """
+select
+ps.store_id,
+sum(ps.sum_quantity_product) as sum_quantity_product
+from products_summaries ps 
+left join summary.product_ontology_mapping pom on ps.store_id=pom.store_id and ps.barcode=pom.barcode
+where pom.type_product_predicted_1 = 'Fumeur' and sum_quantity_product > 100
+group by ps.store_id
+""". 
+
+<#TobaccoStore>
+  a rr:TriplesMap ;
+
+  # rr:logicalTable [ rr:tableName "summary.store_ids" ] ;
+  rr:logicalTable <#TobaccoStoreTableView>;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/tobaccoStore/{store_id}" ;
+    rr:class sto:TobaccoStore ;
+  ] ;
+.
+
+
+<#InseeTableView> rr:sqlQuery """
+SELECT DISTINCT addr.insee_code
+FROM summary.address addr
+""". 
+
+<#InseeZone>
+  a rr:TriplesMap ;
+
+  rr:logicalTable <#InseeTableView> ;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/InseeZone/{insee_code}" ;
+    rr:class sto:InseeZone ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate rdfs:label;
+    rr:objectMap [ rr:column "insee_code" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:insee_code;
+    rr:objectMap [ rr:column "insee_code" ] ;
+  ] ;
+
+   rr:predicateObjectMap [
+    rr:predicate sto:is_in_town;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/Town/{insee_code}" ];
+  ];
+  .
+
+<#ZipTableView> rr:sqlQuery """
+SELECT DISTINCT addr.zip_code, addr.insee_code
+FROM summary.address addr
+""". 
+
+<#ZipZone>
+  a rr:TriplesMap ;
+
+  rr:logicalTable <#ZipTableView> ;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/ZipZone/{zip_code}" ;
+    rr:class sto:InseeZone ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate rdfs:label;
+    rr:objectMap [ rr:column "zip_code" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:zip_code;
+    rr:objectMap [ rr:column "zip_code" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_in_town;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/Town/{insee_code}" ];
+  ];
+  .
+
+<#IrisTableView> rr:sqlQuery """
+SELECT DISTINCT addr.iris, addr.insee_code
+FROM summary.address addr
+""". 
+
+<#IrisZone>
+  a rr:TriplesMap ;
+
+  rr:logicalTable <#IrisTableView>;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/IrisZone/{iris}" ;
+    rr:class sto:IrisZone ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate rdfs:label;
+    rr:objectMap [ rr:column "iris" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:iris_code;
+    rr:objectMap [ rr:column "iris" ] ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_in_insee_zone;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/InseeZone/{insee_code}" ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicate sto:is_in_town;
+    rr:objectMap [ rr:template "http://test.org/products_and_sales_ontology/Town/{insee_code}" ];
+  ];
+
+  rr:predicateObjectMap [
+    rr:predicate owl:sameAs;
+    rr:objectMap [ rr:template "http://test.org/open_data_ontology/IrisZone/{iris}" ];
+  ];
+  .
+
+<#TownTableView> rr:sqlQuery """
+SELECT  DISTINCT town.town, town.insee_code
+FROM summary.towns town
+""". 
+
+  <#Town>
+  a rr:TriplesMap ;
+
+  rr:logicalTable <#TownTableView> ;
+
+  rr:subjectMap [
+    rr:template "http://test.org/products_and_sales_ontology/{insee_code}" ;
+    rr:class sto:Town ;
+  ] ;
+
+  rr:predicateObjectMap [
+    rr:predicate rdfs:label;
+    rr:objectMap [ rr:column "town" ] ;
+  ] ;
+  .
